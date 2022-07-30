@@ -7,13 +7,17 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "hardhat/console.sol";
 
+import "./IDAOToken.sol";
+
 contract DAOTreasury is Ownable {
 
-    // 200,000YEN = 1ETH -> 1YEN = 1Token = 0.000005 ETH
-    uint private _oneGWei = 1000000000 wei;
-    uint private _exchangeRate = _oneGWei * 5000;
+    IDAOToken private _DAOTokenContract;
 
-    constructor (){
+    function setDAOTokenContractAddress(address _address) external onlyOwner {
+        _DAOTokenContract = IDAOToken(_address);
+    }
+
+    constructor () {
 
     }
 
@@ -26,28 +30,46 @@ contract DAOTreasury is Ownable {
 
     /**
      * @notice Can't pull out ETH(balance) anyone.
+     * Below is a sample code.
+     * This code is withdraw the full amount to the owner's wallet.
+     * It's comment out.
      */
     //function withdraw() external onlyOwner {
-        // owner.transfer(address(this).balance);
+    //    Address.sendValue(payable(this.owner()), address(this).balance);
     //}
-
-
-
-    function setExchangeRate(uint newRate) external onlyOwner {
-        _exchangeRate = newRate;
-    }
 
     /**
      * @notice Exchange DAOTokens to Ethereum(ETH).
      */
-    function requestForTokenToEth( uint amount ) external {
-        
-        // Verify that hold the DAOTokens.
+    function requestForTokenToEth( uint256 _amount ) external returns(bool) {
+        /*
+            Verify that hold(balance) the DAOTokens.
+        */
+        uint256 balance = _DAOTokenContract.balanceOf(address(msg.sender));
+        if ( balance < _amount ) return false;
 
-        // Burn the exchanged DAOTokens.
-
-        // Transfer Ethereum(ETH).
+        /*
+            Transfer Ethereum(ETH).
+        */
+        uint256 total_supply = _DAOTokenContract.totalSupply();             // Get the totalSupply of DAOTokens.
+        uint pay_val = (address(this).balance * _amount) / total_supply;    // Calculate the payment value.
         // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/3008
-        Address.sendValue(payable(msg.sender), (amount * _exchangeRate));
+        Address.sendValue(payable(msg.sender), pay_val);
+
+        /*
+            TODO:
+                送金で、Errorが発生した場合を想定して、Try Catchするべき。しかし、以下のコンパイルエラーが発生する。
+                Try can only be used with external function calls and contract creation calls.
+                確かに、sendValue(...) は、Internal である。
+                何がしかのトリックが必要と思われる。
+                送付するeternalな関数を別に作って、this.sendValueとして自身のメソッドを呼び出すと上手くいくか？
+        */
+
+        /*
+            Burn the exchanged DAOTokens.
+        */
+        _DAOTokenContract.burn(address(msg.sender), _amount);
+        
+        return true;
     }
 }
