@@ -7,18 +7,21 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "hardhat/console.sol";
 
-import "./IDAOToken.sol";
+import "./DAOToken.sol";
 
 contract DAOTreasury is Ownable {
 
-    IDAOToken private _DAOTokenContract;
-
-    function setDAOTokenContractAddress(address _address) external onlyOwner {
-        _DAOTokenContract = IDAOToken(_address);
-    }
+    address private _daoTokenContractAddress;
 
     constructor () {
 
+    }
+
+    /**
+     * @notice Set DAOTokenContract Address.
+     */
+    function setDAOTokenContractAddress(address _address) external onlyOwner {
+        _daoTokenContractAddress = _address;
     }
 
     /**
@@ -42,17 +45,18 @@ contract DAOTreasury is Ownable {
      * @notice Exchange DAOTokens to Ethereum(ETH).
      */
     function requestForTokenToEth( uint256 _amount ) external returns(bool) {
-        /*
-            Verify that hold(balance) the DAOTokens.
-        */
-        uint256 balance = _DAOTokenContract.balanceOf(address(msg.sender));
+
+        DAOToken daoToken = DAOToken(_daoTokenContractAddress);
+
+        // Verify that hold(balance) the DAOTokens.
+        uint256 balance = daoToken.balanceOf(address(msg.sender));
+
         if ( balance < _amount ) return false;
 
-        /*
-            Transfer Ethereum(ETH).
-        */
-        uint256 total_supply = _DAOTokenContract.totalSupply();             // Get the totalSupply of DAOTokens.
-        uint pay_val = (address(this).balance * _amount) / total_supply;    // Calculate the payment value.
+        // Transfer Ethereum(ETH).
+        uint256 total_supply = daoToken.totalSupply();                          // Get the totalSupply of DAOTokens.
+        uint256 pay_val = (address(this).balance * _amount) / total_supply;     // Calculate the payment value.
+
         // https://github.com/OpenZeppelin/openzeppelin-contracts/issues/3008
         Address.sendValue(payable(msg.sender), pay_val);
 
@@ -64,11 +68,8 @@ contract DAOTreasury is Ownable {
                 何がしかのトリックが必要と思われる。
                 送付するeternalな関数を別に作って、this.sendValueとして自身のメソッドを呼び出すと上手くいくか？
         */
-
-        /*
-            Burn the exchanged DAOTokens.
-        */
-        _DAOTokenContract.burn(address(msg.sender), _amount);
+        // Burn the exchanged DAOTokens.
+        daoToken.burn(address(msg.sender), _amount);
         
         return true;
     }

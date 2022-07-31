@@ -38,6 +38,13 @@ contract DAOToken is ERC20, AccessControl {
         _setupRole(BURNER_ROLE, msg.sender);
     }
 
+    function setupMinterRole(address _address) external {
+        _setupRole(MINTER_ROLE, _address);
+    }
+    function setupBurnerRole(address _address) external {
+        _setupRole(BURNER_ROLE, _address);
+    }
+
     // MINTER_ROLE can mint new tokens
     function mint(address to, uint256 amount) external {
         // Check that the calling account has the minter role
